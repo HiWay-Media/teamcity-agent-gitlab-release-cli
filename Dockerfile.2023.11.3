@@ -1,0 +1,7 @@
+FROM ghcr.io/hiway-media/teamcity-agent-2023.11.3
+#
+USER root
+RUN apt-get update
+RUN apt install snapd
+RUN snap install gitlab-cli
+#
