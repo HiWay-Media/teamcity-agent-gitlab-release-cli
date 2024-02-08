@@ -3,6 +3,5 @@ FROM ghcr.io/hiway-media/teamcity-agent-latest
 USER root
 #
 RUN apt-get update
-RUN apt install -y snapd
-RUN snap install gitlab-cli
+RUN apt-get -y install gitlab-cli
 #
