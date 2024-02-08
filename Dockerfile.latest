@@ -4,5 +4,5 @@ USER root
 #
 RUN apt-get update
 RUN apt install -y snapd
-RUN snap install -y gitlab-cli
+RUN snap install gitlab-cli
 #
