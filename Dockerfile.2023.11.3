@@ -2,31 +2,16 @@ FROM ghcr.io/hiway-media/teamcity-agent-2023.11.3
 #
 USER root
 RUN apt-get update
-RUN apt-get -y install gitlab-cli
+RUN apt-get -y install gitlab-cli unzip wget
 #
-ENV GRADLE_HOME=/usr/bin/gradle
-ENV DEBIAN_FRONTEND=noninteractive
+RUN wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O commandlinetools.zip
+RUN mkdir -p ~/Android/Sdk/cmdline-tools
+RUN unzip commandlinetools.zip -d ~/Android/Sdk/cmdline-tools
+RUN mv ~/Android/Sdk/cmdline-tools/cmdline-tools ~/Android/Sdk/cmdline-tools/latest
 #
-RUN apt-get update
-RUN apt-get install -y --force-yes expect git mc gradle unzip \
-    wget curl libc6-i386 lib32stdc++6 
+ENV export ANDROID_SDK_ROOT=$HOME/Android/Sdk
+ENV export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+ENV export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
 #
-RUN apt-get clean
-RUN rm -fr /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-ADD android-accept-licenses.sh /opt/tools/
-ENV PATH ${PATH}:/opt/tools
-ENV LICENSE_SCRIPT_PATH /opt/tools/android-accept-licenses.sh
-
-RUN cd /opt && wget --output-document=android-tools.zip \
-    https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip && \
-    unzip android-tools.zip -d android-sdk-linux && \
-    chown -R root.root android-sdk-linux
-
-ENV ANDROID_HOME /opt/android-sdk-linux
-ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools
-
-RUN yes | sdkmanager --licenses
-RUN sdkmanager --update
-RUN yes | sdkmanager "build-tools;29.0.3" "platforms;android-29" "ndk-bundle" "ndk;21.0.6113669"
+RUN sdkmanager "platform-tools" "platforms;android-30" "build-tools;30.0.3"
 #
