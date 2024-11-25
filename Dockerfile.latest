@@ -5,14 +5,14 @@ USER root
 RUN apt-get update
 RUN apt-get -y install gitlab-cli unzip wget
 #
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O commandlinetools.zip
-RUN mkdir -p ~/Android/Sdk/cmdline-tools
-RUN unzip commandlinetools.zip -d ~/Android/Sdk/cmdline-tools
-RUN mv ~/Android/Sdk/cmdline-tools/cmdline-tools ~/Android/Sdk/cmdline-tools/latest
-#
-ENV export ANDROID_SDK_ROOT=$HOME/Android/Sdk
-ENV export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
-ENV export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
-#
-RUN sdkmanager "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+#RUN wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O commandlinetools.zip
+#RUN mkdir -p ~/Android/Sdk/cmdline-tools
+#RUN unzip commandlinetools.zip -d ~/Android/Sdk/cmdline-tools
+#RUN mv ~/Android/Sdk/cmdline-tools/cmdline-tools ~/Android/Sdk/cmdline-tools/latest
+##
+#ENV export ANDROID_SDK_ROOT=$HOME/Android/Sdk
+#ENV export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+#ENV export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
+##
+#RUN sdkmanager "platform-tools" "platforms;android-30" "build-tools;30.0.3"
 #
