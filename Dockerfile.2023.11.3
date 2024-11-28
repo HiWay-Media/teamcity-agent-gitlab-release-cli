@@ -2,7 +2,7 @@ FROM ghcr.io/hiway-media/teamcity-agent-2023.11.3
 #
 USER root
 RUN apt-get update
-RUN apt-get -y install gitlab-cli unzip wget sdkmanager
+RUN apt-get -y install gitlab-cli unzip wget
 # unzip wget nano
 RUN wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O commandlinetools.zip
 RUN mkdir -p ~/Android/Sdk/cmdline-tools
