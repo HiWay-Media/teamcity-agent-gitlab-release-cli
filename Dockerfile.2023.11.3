@@ -25,5 +25,7 @@ RUN echo $PATH
 #RUN . ~/.bashrc
 ##
 RUN ls -l /root/Android/Sdk/cmdline-tools/latest/bin
+RUN (yes "" 2>/dev/null || true) | sdkmanager --licenses
+#
 RUN /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 #
