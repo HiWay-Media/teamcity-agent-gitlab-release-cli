@@ -11,13 +11,20 @@ RUN mkdir -p ~/Android/Sdk/cmdline-tools
 RUN unzip commandlinetools.zip -d ~/Android/Sdk/cmdline-tools
 RUN mv ~/Android/Sdk/cmdline-tools/cmdline-tools ~/Android/Sdk/cmdline-tools/latest
 #
-RUN export ANDROID_SDK_ROOT=~/Android/Sdk
-RUN export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
-RUN export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
+#RUN export ANDROID_SDK_ROOT=~/Android/Sdk
+#RUN export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+#RUN export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
 #
-ENV ANDROID_SDK_ROOT=~/Android/Sdk
-ENV PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
-ENV PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
+RUN echo $PATH
+#ENV ANDROID_SDK_ROOT=~/Android/Sdk
+#ENV PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+#ENV PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
+RUN echo "export ANDROID_SDK_ROOT=~/Android/Sdk" >> ~/.bashrc
+RUN echo "export ANDPATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> ~/.bashrc
+RUN echo "export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools" >> ~/.bashrc
+RUN cat ~/.bashrc
+#
+RUN echo $PATH
 ##
 RUN sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 #
