@@ -25,7 +25,7 @@ RUN echo "export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools" >> ~/.bashrc
 RUN cat ~/.bashrc
 #
 RUN echo $PATH
-RUN . ~/.bashrc
+#RUN . ~/.bashrc
 ##
-RUN sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+RUN sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 #
