@@ -25,7 +25,7 @@ ENV PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
 #RUN echo "export PATH=${PATH}:/root/Android/Sdk/cmdline-tools/latest/bin" >> ~/.bashrc
 #RUN echo "export PATH=${PATH}:/root/Android/Sdk/platform-tools" >> ~/.bashrc
 RUN cat ~/.bashrc
-RUN source /root/.bashrc
+RUN . /root/.bashrc
 #
 RUN echo $PATH
 #RUN . ~/.bashrc
