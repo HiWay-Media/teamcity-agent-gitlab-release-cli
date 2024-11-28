@@ -14,6 +14,10 @@ RUN mv ~/Android/Sdk/cmdline-tools/cmdline-tools ~/Android/Sdk/cmdline-tools/lat
 RUN export ANDROID_SDK_ROOT=$HOME/Android/Sdk
 RUN export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
 RUN export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
+#
+ENV ANDROID_SDK_ROOT=$HOME/Android/Sdk
+ENV PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+ENV PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
 ##
 RUN sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 #
