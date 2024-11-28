@@ -25,12 +25,12 @@ RUN echo $PATH
 #RUN . ~/.bashrc
 ##
 RUN ls -l /root/Android/Sdk/cmdline-tools/latest/bin
-RUN (yes "" 2>/dev/null || y) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager --update
-RUN (yes "" 2>/dev/null || y) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+RUN (yes "" 2>/dev/null || true) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager --update
+RUN (yes "" 2>/dev/null || true) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 #
 #RUN /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 #
-RUN (y "" 2>/dev/null || y) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools"
-RUN (y "" 2>/dev/null || y) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-35"
-RUN (y "" 2>/dev/null || y) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;35.0.0"
+RUN (y "" 2>/dev/null || true) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools"
+RUN (y "" 2>/dev/null || true) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-35"
+RUN (y "" 2>/dev/null || true) | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;35.0.0"
 #
