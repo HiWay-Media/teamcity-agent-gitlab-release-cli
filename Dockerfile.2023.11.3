@@ -17,7 +17,7 @@ RUN echo $PATH
 #ENV ANDROID_SDK_ROOT=~/Android/Sdk
 #ENV PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
 #ENV PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
-RUN echo "export ANDROID_SDK_ROOT=~/Android/Sdk" >> ~/.bashrc
+RUN echo "export ANDROID_SDK_ROOT=/root/Android/Sdk" >> ~/.bashrc
 RUN echo "export ANDPATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> ~/.bashrc
 RUN echo "export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools" >> ~/.bashrc
 RUN cat ~/.bashrc
