@@ -1,6 +1,6 @@
 FROM ghcr.io/hiway-media/teamcity-agent-latest
 #
-USER 
+USER root
 RUN apt-get update
 RUN apt-get -y install gitlab-cli unzip wget rsync sudo rclone
 #
