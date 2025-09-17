@@ -1,7 +1,7 @@
 FROM ghcr.io/hiway-media/teamcity-agent-latest
 USER root
 RUN apt-get update
-RUN sudo add-apt-repository ppa:longsleep/golang-backports
+RUN add-apt-repository ppa:longsleep/golang-backports
 RUN apt-get -y install gitlab-cli unzip wget rsync sudo rclone build-essential curl golang
 #
 # or install it into ./bin/
