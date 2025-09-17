@@ -5,7 +5,7 @@ RUN apt-get update
 RUN apt-get -y install gitlab-cli unzip wget rsync sudo rclone build-essential curl
 #
 # or install it into ./bin/
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.4.0
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.4.0
 #
 # unzip wget nano
 RUN wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O commandlinetools.zip
