@@ -5,6 +5,7 @@ RUN apt-get update
 RUN add-apt-repository ppa:longsleep/golang-backports
 RUN apt-get -y install gitlab-cli unzip wget rsync sudo rclone build-essential curl golang
 #
+RUN go install go.uber.org/mock/mockgen@latest
 # or install it into ./bin/
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.4.0
 #
