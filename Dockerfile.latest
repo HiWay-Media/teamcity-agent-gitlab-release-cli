@@ -18,9 +18,9 @@ RUN echo $PATH
 ENV ANDROID_SDK_ROOT=/root/Android/Sdk
 ENV PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
 ENV PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
+ENV PATH=$PATH:$(go env GOPATH)/bin
 RUN cat ~/.bashrc
 RUN . /root/.bashrc
-RUN export PATH=$PATH:$(go env GOPATH)/bin
 #
 RUN echo $PATH
 ##
