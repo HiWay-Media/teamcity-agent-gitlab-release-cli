@@ -31,7 +31,6 @@ RUN echo $PATH
 RUN ls -l /root/Android/Sdk/cmdline-tools/latest/bin
 RUN yes | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 #
-#
 RUN yes | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools"
 RUN yes | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-35"
 RUN yes | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;35.0.0"
