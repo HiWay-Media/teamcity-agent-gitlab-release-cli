@@ -1,4 +1,4 @@
-# CLAUDE.md — teamcity-agent-gitlab-release-cli
+# AGENTS.md — teamcity-agent-gitlab-release-cli
 
 Repo che costruisce le **immagini Docker degli agent TeamCity di HiWay Media**
 (`github.com/HiWay-Media/teamcity-agent-gitlab-release-cli`): due Dockerfile che partono dalle base
@@ -9,8 +9,8 @@ SDK command-line tools, `gitlab-cli` e utility di pipeline. Le immagini finite e
 Qui **non c'è un'applicazione**: il prodotto è l'immagine. Ogni modifica è un cambio di runtime per
 tutte le pipeline TeamCity che la usano.
 
-Regole operative per Claude Code in questo repository. `AGENTS.md` è lo stesso contenuto per gli altri
-tool AI (Copilot & co.): **se modifichi uno, allinea l'altro nello stesso commit**.
+Questo file definisce le regole operative per gli agent (Claude, Copilot, altri tool AI) che lavorano
+in questo repository. `CLAUDE.md` ne è la copia per Claude Code: **tenerli allineati**.
 
 ## Regole di lavoro (SEMPRE)
 
@@ -110,14 +110,3 @@ Contratto del check: `--json`, `--write`, `--github-output`, `--state <file>`;
   TeamCity su `teamcity.hiwaymedia.dev`.
 - **Repo affini**: `devops_hiway` (infrastruttura e monitoring, convenzioni di cui questo file è
   l'adattamento), `teamcity_backup`, `cnf-mng-hiway`.
-
-## Nota per Claude Code
-
-- La documentazione lunga (Dockerfile riga per riga, workflow, esempi d'uso in pipeline) sta in
-  `docs/overview.md` — era questo file prima dell'adozione della convenzione `devops_hiway`. Leggila
-  quando serve il dettaglio, non tenerla in contesto per default.
-- Prima di proporre un bump di versione degli strumenti: `./scripts/check-teamcity-release.sh` per
-  sapere se il canale `latest` è già disallineato, e `git log --oneline -- Dockerfile.latest` per vedere
-  la cadenza reale dei bump.
-- Le build Docker qui sono lunghe (Android SDK). Se lanci una build locale, mandala in background e
-  riprendi il log, non bloccare la sessione.

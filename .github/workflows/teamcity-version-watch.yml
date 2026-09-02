@@ -1,0 +1,209 @@
+name: TeamCity release watch
+
+# Sorveglia due segnali e, se cambiano, allinea l'immagine agent "latest":
+#   1. nuova release TeamCity on-prem (data.services.jetbrains.com)
+#   2. nuovo digest della base image ghcr.io/hiway-media/teamcity-agent-latest:latest
+#
+# Default: apre una PR con lo stato aggiornato (la review resta umana).
+# Con mode=release (o variable TC_WATCH_AUTO_RELEASE=true) committa su main e
+# spinge un tag vX.Y.Z, che fa partire i workflow docker-publish-*.
+#
+# NOTA: un tag pushato con GITHUB_TOKEN NON innesca altri workflow. Per il
+# rilascio automatico serve il secret RELEASE_PAT (PAT con scope repo/workflow);
+# senza, il job ripiega sulla PR e lo dichiara nel summary.
+
+on:
+  schedule:
+    # ogni giorno alle 05:17 UTC (minuto sfalsato: gli slot tondi sono congestionati)
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Procedi anche se non e cambiato niente'
+        type: boolean
+        default: false
+      mode:
+        description: 'pr = apri PR (default) | release = commit su main + tag vX.Y.Z'
+        type: choice
+        options: [pr, release]
+        default: pr
+
+permissions:
+  contents: read
+
+concurrency:
+  group: teamcity-version-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    outputs:
+      has_update: ${{ steps.check.outputs.has_update }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Check TeamCity release + base image digest
+        id: check
+        run: ./scripts/check-teamcity-release.sh --github-output | tee check.log
+
+      - name: Decide
+        id: decide
+        env:
+          HAS_UPDATE: ${{ steps.check.outputs.has_update }}
+          FORCE: ${{ github.event.inputs.force }}
+          MODE_IN: ${{ github.event.inputs.mode }}
+          AUTO_RELEASE: ${{ vars.TC_WATCH_AUTO_RELEASE }}
+          HAS_PAT: ${{ secrets.RELEASE_PAT != '' }}
+        run: |
+          set -euo pipefail
+          proceed=false
+          if [ "$HAS_UPDATE" = "true" ] || [ "$FORCE" = "true" ]; then proceed=true; fi
+
+          mode="${MODE_IN:-pr}"
+          if [ "$mode" != "release" ] && [ "${AUTO_RELEASE,,}" = "true" ]; then mode=release; fi
+          fallback=""
+          if [ "$mode" = "release" ] && [ "$HAS_PAT" != "true" ]; then
+            mode=pr
+            fallback="RELEASE_PAT assente: il tag non innescherebbe docker-publish-*, ripiego su PR"
+          fi
+
+          echo "proceed=$proceed" >> "$GITHUB_OUTPUT"
+          echo "mode=$mode"       >> "$GITHUB_OUTPUT"
+          echo "fallback=$fallback" >> "$GITHUB_OUTPUT"
+
+      - name: Aggiorna stato e CHANGELOG
+        if: steps.decide.outputs.proceed == 'true'
+        id: bump
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+          PREVIOUS: ${{ steps.check.outputs.previous }}
+          NOTES: ${{ steps.check.outputs.notes }}
+          DIGEST: ${{ steps.check.outputs.digest }}
+          REASON: ${{ steps.check.outputs.reason }}
+        run: |
+          set -euo pipefail
+          ./scripts/check-teamcity-release.sh --write
+
+          last_tag="$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n1)"
+          last_tag="${last_tag:-v0.0.0}"
+          IFS=. read -r maj min pat <<<"${last_tag#v}"
+          new_tag="v${maj}.${min}.$((pat + 1))"
+          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+          echo "last_tag=$last_tag" >> "$GITHUB_OUTPUT"
+
+          notes_md=""
+          [ -n "${NOTES:-}" ] && notes_md=" ([release notes](${NOTES}))"
+
+          entry_file="$(mktemp)"
+          {
+            printf '## [%s] - %s\n\n' "${new_tag#v}" "$(date -u +%F)"
+            printf '### Changed\n\n'
+            printf -- '- Allineamento immagine agent `latest`: %s.\n' "$REASON"
+            printf -- '- TeamCity tracciato: `%s` -> `%s`%s.\n' "${PREVIOUS:-n/d}" "$VERSION" "$notes_md"
+            printf -- '- Base image `ghcr.io/hiway-media/teamcity-agent-latest:latest` digest `%s`.\n' "$DIGEST"
+            printf -- '- Aggiornato da `.github/workflows/teamcity-version-watch.yml`.\n'
+          } > "$entry_file"
+
+          # inserisce la sezione sopra la prima release gia' presente (awk -v non regge i multi-riga)
+          tmp="$(mktemp)"
+          first_h2="$(grep -n '^## ' CHANGELOG.md | head -n1 | cut -d: -f1 || true)"
+          if [ -n "$first_h2" ]; then
+            head -n "$((first_h2 - 1))" CHANGELOG.md > "$tmp"
+            cat "$entry_file" >> "$tmp"; printf '\n' >> "$tmp"
+            tail -n "+${first_h2}" CHANGELOG.md >> "$tmp"
+          else
+            cat CHANGELOG.md > "$tmp"; printf '\n' >> "$tmp"; cat "$entry_file" >> "$tmp"
+          fi
+          mv "$tmp" CHANGELOG.md
+
+      - name: Apri PR
+        if: steps.decide.outputs.proceed == 'true' && steps.decide.outputs.mode == 'pr'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          branch: chore/teamcity-watch
+          delete-branch: true
+          commit-message: "chore: allinea agent latest a TeamCity ${{ steps.check.outputs.version }}"
+          title: "chore: allinea agent latest a TeamCity ${{ steps.check.outputs.version }}"
+          body: |
+            Rilevato dal watcher schedulato (`.github/workflows/teamcity-version-watch.yml`).
+
+            **Motivo:** ${{ steps.check.outputs.reason }}
+
+            | | |
+            |---|---|
+            | TeamCity | `${{ steps.check.outputs.previous }}` → `${{ steps.check.outputs.version }}` |
+            | Release notes | ${{ steps.check.outputs.notes }} |
+            | Base image digest | `${{ steps.check.outputs.digest }}` |
+
+            Al merge, per pubblicare l'immagine: `git tag -a ${{ steps.bump.outputs.new_tag }} -m "Release ${{ steps.bump.outputs.new_tag }}" && git push origin ${{ steps.bump.outputs.new_tag }}`
+            (il push del tag fa partire `docker-publish-latest` e `docker-publish-2023.11.3`).
+          labels: automated, teamcity
+
+      - name: Commit + tag (mode=release)
+        if: steps.decide.outputs.proceed == 'true' && steps.decide.outputs.mode == 'release'
+        env:
+          NEW_TAG: ${{ steps.bump.outputs.new_tag }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name  'teamcity-version-watch'
+          git config user.email 'dev-ops@hiway.media'
+          git add teamcity-version.json CHANGELOG.md
+          git commit -m "chore: allinea agent latest a TeamCity ${VERSION}"
+          git tag -a "$NEW_TAG" -m "Release ${NEW_TAG#v}"
+          git push origin HEAD:"${GITHUB_REF_NAME}"
+          git push origin "$NEW_TAG"
+
+      - name: Summary
+        if: always()
+        env:
+          PROCEED: ${{ steps.decide.outputs.proceed }}
+          MODE: ${{ steps.decide.outputs.mode }}
+          FALLBACK: ${{ steps.decide.outputs.fallback }}
+          NEW_TAG: ${{ steps.bump.outputs.new_tag }}
+        run: |
+          {
+            echo '## TeamCity release watch'
+            echo
+            echo '```'
+            cat check.log 2>/dev/null || echo 'check non eseguito'
+            echo '```'
+            echo
+            if [ "${PROCEED:-false}" = "true" ]; then
+              echo "Azione: **${MODE}**${NEW_TAG:+ (prossimo tag \`${NEW_TAG}\`)}"
+            else
+              echo 'Azione: **nessuna** — tutto allineato.'
+            fi
+            [ -n "${FALLBACK:-}" ] && echo && echo "> ${FALLBACK}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Recap Slack
+        if: steps.decide.outputs.proceed == 'true' && env.SLACK_WEBHOOK_URL != ''
+        env:
+          REASON: ${{ steps.check.outputs.reason }}
+          VERSION: ${{ steps.check.outputs.version }}
+          MODE: ${{ steps.decide.outputs.mode }}
+        run: |
+          set -euo pipefail
+          curl -sS --max-time 15 -X POST -H 'Content-Type: application/json' \
+            --data "$(jq -n --arg t "*teamcity-agent-gitlab-release-cli* — agent \`latest\` da allineare (TeamCity ${VERSION})" \
+                            --arg r "${REASON}" --arg m "${MODE}" \
+                            --arg u "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              '{blocks:[
+                 {type:"section",text:{type:"mrkdwn",text:$t}},
+                 {type:"section",text:{type:"mrkdwn",text:("*Motivo:* "+$r+"\n*Azione:* "+$m)}},
+                 {type:"context",elements:[{type:"mrkdwn",text:("<"+$u+"|run GitHub Actions>")}]}
+               ]}')" \
+            "$SLACK_WEBHOOK_URL"
