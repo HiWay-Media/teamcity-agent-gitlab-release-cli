@@ -3,6 +3,9 @@ name: Docker publish teamcity agent latest
   push:
     tags:
       - '*'
+  # lanciato da teamcity-version-watch con --ref <tag>: lo step Prepare legge GITHUB_REF,
+  # quindi il ref del dispatch DEVE essere il tag da pubblicare.
+  workflow_dispatch: {}
 jobs:
   docker:
     runs-on: ubuntu-latest

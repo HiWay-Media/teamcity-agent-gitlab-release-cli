@@ -46,7 +46,8 @@ dire esattamente cosa contiene.
 3. **Due canali paralleli** — `latest` (TeamCity corrente) e `2023.11.3` (LTS interno), così un upgrade
    del server non obbliga a migrare tutte le pipeline nello stesso giorno.
 4. **Restare al passo con TeamCity senza presidiarlo a mano** — un watcher schedulato sorveglia le
-   release JetBrains e il digest della base image, e apre la PR di allineamento da solo.
+   release JetBrains e il digest della base image: quando c'è contenuto nuovo rilascia e pubblica da
+   solo (tag + GitHub Release + immagini), quando la catena è bloccata a monte apre una issue.
 5. **Tracciabilità** — ogni immagine su GHCR corrisponde a un tag git e a una riga di CHANGELOG che
    dice *perché* è cambiata.
 
@@ -60,7 +61,10 @@ Ciò che segue **non** è un buco da colmare: è una scelta.
 - **Non è il repo delle pipeline.** Configurazioni TeamCity, job spec e logica di release stanno in
   `teamcity-ci-cd-hiway`. Qui c'è il *contenitore* dentro cui girano.
 - **Non costruisce la base image.** `ghcr.io/hiway-media/teamcity-agent-{latest,2023.11.3}` vengono da
-  un altro repo. Qui la si consuma e se ne sorveglia il digest.
+  `HiWay-Media/teamcity-agent`. Qui la si consuma, se ne sorveglia il digest e si segnala quando resta
+  indietro — ma ricostruirla è lavoro di quel repo, non di questo. Al 2026-09-02 quella base è a
+  `v1.9.0` del 2025-09-18 mentre TeamCity è a 2026.1.3: è il collo di bottiglia reale del canale
+  `latest`, non un dettaglio.
 - **Non è un'immagine general-purpose.** Non si aggiungono strumenti "che potrebbero servire": ogni
   pacchetto in più è peso su ogni pull di ogni agent. Si aggiunge quando una pipeline reale lo chiede.
 - **Non custodisce segreti.** Nessun token GitLab, chiave o credenziale nell'immagine: li inietta
@@ -80,7 +84,8 @@ Ciò che segue **non** è un buco da colmare: è una scelta.
 | **I due canali divergono solo dove serve** | Se `latest` e `2023.11.3` derivano, il canale LTS smette di essere un fallback credibile e diventa un secondo runtime da mantenere. |
 | **Verificare l'immagine, non il Dockerfile** | Un `RUN` che passa non garantisce che lo strumento sia nel `PATH`. Si controlla eseguendo i comandi nel container finito. |
 | **Un WARN non fa fallire il check** | `check-teamcity-release.sh` esce `0` anche quando c'è un aggiornamento: exit `≠0` solo per errore sistemico. Un check che "fallisce" a ogni novità si impara a ignorare. |
-| **L'automazione propone, la persona dispone** | Il watcher apre una PR; il rilascio automatico è opt-in esplicito. Un runtime che si aggiorna da solo di notte è un incidente che aspetta. |
+| **Si rilascia solo se c'è contenuto nuovo** | Il gate del rilascio automatico è il **digest della base image**, non l'annuncio JetBrains: `FROM …/teamcity-agent-latest` non è pinnato, quindi finché quella base non viene ricostruita una release pubblicherebbe byte identici con un numero nuovo. Un CHANGELOG di release vuote non è tracciabilità, è rumore. |
+| **Se la catena si blocca, si dice** | Quando TeamCity va avanti e la base image resta ferma non c'è niente da pubblicare: il watcher apre una issue verso il repo della base invece di fingere un avanzamento. Il silenzio farebbe sembrare `latest` aggiornata quando non lo è. |
 | **Le versioni SDK sono un contratto** | Alzare `compileSdk`/`build-tools` rompe le build Gradle a valle: prima si verifica chi usa l'immagine. |
 
 ## 6. Confini — cosa vive dove

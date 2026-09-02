@@ -28,23 +28,37 @@ Il push di un tag git fa partire `docker-publish-latest` e `docker-publish-2023.
 
 ## Aggiornamento automatico del canale `latest`
 
-`.github/workflows/teamcity-version-watch.yml` gira ogni giorno alle 05:17 UTC e controlla due segnali:
+[`.github/workflows/teamcity-version-watch.yml`](.github/workflows/teamcity-version-watch.yml) gira ogni
+giorno alle 05:17 UTC (più `workflow_dispatch` manuale) e decide fra tre azioni:
 
-1. una **nuova release TeamCity** su `data.services.jetbrains.com` (azionabile solo quando esiste anche
-   `jetbrains/teamcity-agent:<versione>-linux` su Docker Hub);
-2. un **nuovo digest** della base image `ghcr.io/hiway-media/teamcity-agent-latest:latest`.
+| Condizione | Azione |
+|---|---|
+| Base image `teamcity-agent-latest` ricostruita | **release**: bump (`minor` se cambia anche la versione TeamCity, `patch` se no), commit, tag `vX.Y.Z`, GitHub Release con le note, e dispatch di `docker-publish-latest` + `docker-publish-2023.11.3` su quel tag |
+| Nuova release TeamCity ma base image ferma | **notify**: nessun tag — pubblicherebbe byte identici. Apre una issue verso `HiWay-Media/teamcity-agent` (dopo `policy.stale_after_days`, default 7) + recap Slack |
+| Niente di nuovo | nulla, solo job summary |
 
-Se qualcosa è cambiato aggiorna [`teamcity-version.json`](teamcity-version.json) e il CHANGELOG, e apre
-la PR `chore/teamcity-watch`. Con `mode=release` (o la repository variable `TC_WATCH_AUTO_RELEASE=true`)
-committa su `main` e spinge il tag `vX.Y.Z`, che pubblica le immagini — questo richiede il secret
-`RELEASE_PAT`, perché un tag pushato con `GITHUB_TOKEN` non innesca altri workflow.
+Il gate è il **digest della base image** e non l'annuncio JetBrains perché `Dockerfile.latest` fa
+`FROM ghcr.io/hiway-media/teamcity-agent-latest` senza pin: finché quella base non viene ricostruita nel
+suo repo, il contenuto della nostra immagine non cambia.
+
+Non serve un PAT: `workflow_dispatch` è una delle due eccezioni alla regola per cui gli eventi generati
+con `GITHUB_TOKEN` non innescano altri workflow, quindi il watcher crea il tag e poi lancia i publish
+con `gh workflow run --ref <tag>`.
 
 Lo stesso controllo si esegue in locale:
 
 ```bash
-./scripts/check-teamcity-release.sh          # report leggibile, exit 0 anche se serve un rebuild
+./scripts/check-teamcity-release.sh          # report leggibile, exit 0 anche quando serve una release
 ./scripts/check-teamcity-release.sh --json   # output per pipeline
 ```
 
-Configurazione opzionale: secret `RELEASE_PAT` (rilascio automatico), secret `SLACK_WEBHOOK_URL`
-(recap su Slack), variable `TC_WATCH_AUTO_RELEASE`.
+Stato tracciato in [`teamcity-version.json`](teamcity-version.json) (schema 2): `shipped` è l'ancora del
+confronto, `pending` segna una catena bloccata a monte. Non modificarlo a mano.
+
+**Stato al 2026-09-02**: base image a `v1.9.0` del 2025-09-18 (349 giorni), TeamCity a `2026.1.3`
+(uscita 37 giorni fa) → il watcher sta in `notify`: il canale `latest` gira su un agent di settembre
+2025 e si sblocca solo con un rebuild in `HiWay-Media/teamcity-agent`.
+
+Configurazione opzionale: secret `SLACK_WEBHOOK_URL` (recap Slack), secret `BASE_REPO_PAT`
+(`repository_dispatch` di rebuild verso il repo della base image), `policy.stale_after_days` nello state
+file.

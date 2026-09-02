@@ -48,34 +48,67 @@ Dockerfile è sbagliato, non la verifica.
 
 ## Aggiornamento automatico dell'immagine `latest`
 
-Il canale `latest` insegue due cose, non una:
-
-1. le **release TeamCity** pubblicate da JetBrains (`data.services.jetbrains.com`);
-2. il **digest della base image** `ghcr.io/hiway-media/teamcity-agent-latest:latest`, che cambia quando
-   viene ricostruita nel suo repo — ed è quello che cambia davvero il contenuto della nostra immagine.
-
-Entrambi sono sorvegliati da `scripts/check-teamcity-release.sh` e dal workflow schedulato
-`.github/workflows/teamcity-version-watch.yml` (giornaliero, 05:17 UTC). Lo stato tracciato sta in
-`teamcity-version.json`: **non modificarlo a mano**, lo aggiorna il check con `--write`.
+Il canale `latest` insegue **il digest della base image**, non l'annuncio JetBrains. Motivo:
+`Dockerfile.latest` fa `FROM ghcr.io/hiway-media/teamcity-agent-latest` senza pin, e quella base vive
+in `HiWay-Media/teamcity-agent`. Finché non viene ricostruita là, una release qui pubblicherebbe byte
+identici con un numero nuovo.
 
 ```
- JetBrains data services ─┐
-                          ├─▶ check-teamcity-release.sh ─▶ has_update? ─┬─ no  ─▶ exit 0, niente
- GHCR base image digest ──┘        (exit 0 anche su WARN)               │
-                                                                        └─ sì ─▶ PR chore/teamcity-watch
-                                                                                  (o, mode=release,
-                                                                                   commit + tag vX.Y.Z
-                                                                                   ─▶ docker-publish-*)
+ JetBrains data services ──┐
+ (release TeamCity)        │
+                           ├──▶ scripts/check-teamcity-release.sh ──▶ action=
+ GHCR base image           │      (confronto contro shipped.digest,
+ (digest + label + build) ──┘       exit 0 anche su WARN)
+                                        │
+      ┌─────────────────────────────────┼──────────────────────────────────┐
+      ▼                                 ▼                                  ▼
+  release                            notify                               none
+  base ricostruita                   TeamCity avanti, base ferma          niente di nuovo
+      │                                 │                                  │
+  bump minor se TeamCity cambia,    nessun tag (byte identici):        summary e stop
+  patch se no                       issue verso il repo della base
+      │                             + recap Slack
+  commit + tag + GitHub Release      + nudge repository_dispatch
+  + dispatch docker-publish-*          (se BASE_REPO_PAT)
 ```
 
-Contratto del check: `--json`, `--write`, `--github-output`, `--state <file>`;
-**exit 0 anche quando c'è un aggiornamento** (è un WARN), exit 1 solo per errore sistemico del check.
+Stato in `teamcity-version.json` (schema 2), **da non modificare a mano**:
+
+| Campo | Cos'è |
+|---|---|
+| `teamcity` | ultima release vista su JetBrains (osservazione) |
+| `base_image` | ultimo digest/versione/data osservati della base (osservazione) |
+| `shipped` | cosa abbiamo **davvero** pubblicato: è l'ancora del confronto |
+| `pending` | TeamCity avanti + base ferma; `since` = data della release TeamCity |
+| `policy.stale_after_days` | dopo quanti giorni di `pending` si apre la issue (default 7) |
+
+Il confronto è `base_image.digest != shipped.digest`, non contro l'osservazione precedente: così i run
+di sola segnalazione non consumano il segnale di release.
+
+Contratto del check: `--json`, `--write`, `--mark-shipped TAG`, `--github-output`, `--state FILE`.
+**Exit 0 anche con `action=release`/`notify`** (sono WARN), exit 1 solo per errore sistemico.
+
+**Stato della catena al 2026-09-02**: base image `v1.9.0` del **2025-09-18** (349 giorni), TeamCity a
+**2026.1.3** (uscita 37 giorni fa) → `action=notify`. Il canale `latest` gira su un agent di settembre
+2025: sbloccarlo richiede un rebuild in `HiWay-Media/teamcity-agent`, non un tag qui.
 
 ## Trappole note / regole tecniche
 
-- **Un tag pushato con `GITHUB_TOKEN` non innesca altri workflow.** Per il rilascio automatico serve il
-  secret `RELEASE_PAT`; senza, il watcher ripiega sulla PR e lo dichiara nel job summary. Non "sistemare"
-  il fallback rimuovendolo.
+- **Un tag pushato con `GITHUB_TOKEN` non innesca `on: push`.** Ma `workflow_dispatch` e
+  `repository_dispatch` sono le due eccezioni alla regola: percio' il watcher crea il tag col
+  `GITHUB_TOKEN` e poi lancia i publish con `gh workflow run --ref <tag>`. Niente PAT. **Il ref del
+  dispatch DEVE essere il tag**: lo step `Prepare` dei publish calcola `VERSION` da `GITHUB_REF`, e su
+  un ref di branch pubblicherebbe `latest` al posto di `vX.Y.Z`.
+- **`printf` con format che inizia per `-`** lo interpreta come opzione e il job muore
+  (`printf: - : invalid option`): serve `printf -- '- ...'`. Le righe di bullet di CHANGELOG, release
+  notes e issue body sono tutte in questa condizione.
+- **In `jq`, un campo che valuta a stream vuoto annulla l'intero oggetto**: `{a: ("" | tonumber?)}`
+  non produce `null`, non produce *niente* — `jq -n` esce 0 con output vuoto e il chiamante si ritrova
+  con JSON invalido. Serve `(("" | tonumber?) // null)`.
+- **`--mark-shipped` va per ultimo** nello step di prep: marcare lo stato prima dei passi che possono
+  fallire lasciava `shipped` aggiornato senza tag né release, e il run dopo diceva "allineato".
+- **Il `env` context in un `if:` di step non vede l'env dello step stesso**: per condizionare uno step
+  alla presenza di un secret, quel secret va nell'`env` del job.
 - **`docker-publish-*.yml` usano `::set-output` e `actions/github-script@v4`**, entrambi deprecati.
   Funzionano ancora ma sono debito: se una build fallisce con un errore di sintassi degli output, è
   quello. Migrarli è un lavoro a sé, non da infilare in un bump di versione.
