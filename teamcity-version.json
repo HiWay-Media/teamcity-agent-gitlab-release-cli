@@ -1,17 +1,17 @@
 {
   "_comment": "Stato tracciato da scripts/check-teamcity-release.sh e dal workflow .github/workflows/teamcity-version-watch.yml. NON modificare a mano: lo aggiorna la PR automatica.",
   "teamcity": {
-    "version": "2026.1.3",
-    "major": "2026.1",
-    "build": "222742",
-    "released": "2026-07-27",
-    "notes": "https://www.jetbrains.com/help/teamcity/2026.1/teamcity-2026-1-3-release-notes.html",
-    "checked": "2026-09-02"
+    "version": "2026.2",
+    "major": "2026.2",
+    "build": "238924",
+    "released": "2026-09-02",
+    "notes": "https://www.jetbrains.com/help/teamcity/2026.2/teamcity-2026-2-release-notes.html",
+    "checked": "2026-09-10"
   },
   "base_image": {
     "ref": "ghcr.io/hiway-media/teamcity-agent-latest:latest",
-    "digest": null,
-    "checked": null
+    "digest": "sha256:c14190b826c06bca78b4a4b8288fae7f54245aaa099a553362322597e8231a9d",
+    "checked": "2026-09-10"
   },
   "tracked": [
     {
