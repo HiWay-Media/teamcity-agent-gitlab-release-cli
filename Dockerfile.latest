@@ -3,6 +3,17 @@ USER root
 RUN apt-get update
 RUN add-apt-repository ppa:longsleep/golang-backports
 RUN apt-get -y install gitlab-cli unzip wget rsync sudo rclone build-essential curl golang
+# Chrome headless: serve a link-speed-report.py e edge-live-viewers.py per il PDF dei report.
+# ⚠️ NON `apt install chromium`: su Ubuntu è un wrapper snap e in container non parte.
+# Il repo ufficiale Google copre Debian e Ubuntu e installa `google-chrome-stable`.
+RUN install -m 0755 -d /usr/share/keyrings \
+ && curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+      | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+ && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
+      > /etc/apt/sources.list.d/google-chrome.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends google-chrome-stable \
+ && rm -rf /var/lib/apt/lists/*
 #
 RUN go install go.uber.org/mock/mockgen@latest
 # or install it into ./bin/
