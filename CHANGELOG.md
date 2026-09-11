@@ -7,6 +7,50 @@ Convenzione: **ogni commit e una release taggata `vX.Y.Z`**. Il tag pushato fa p
 `docker-publish-latest` e `docker-publish-2023.11.3`, che pubblicano le immagini su GHCR con i tag
 `vX.Y.Z`, `vX.Y`, `vX` e `latest`.
 
+## [1.9.0] - 2026-09-11
+
+### Added
+
+- **Chrome headless nell'immagine, su entrambi i canali** (`Dockerfile.latest` e
+  `Dockerfile.2023.11.3`): `chrome-headless-shell` **153.0.8010.36** da Chrome for Testing in
+  `/opt/chrome-headless-shell-linux64/`, con symlink `/usr/bin/chromium`.
+  *Cosa serviva*: le pipeline che producono report (`link-speed-report.py --pdf`, la daily
+  `daily-live-*.pdf`) cercano un browser e, non trovandolo, **saltano il PDF** — per mesi hanno
+  prodotto dati che nessuno ha ricevuto nel formato leggibile. Verificato l'11/09/2026: **nessun**
+  agent aveva un browser, ne' l'LXC ospite ne' il container. Il symlink usa il nome `chromium`
+  perche' e' uno dei quattro che quegli script cercano (`google-chrome`, `google-chrome-stable`,
+  `chromium`, `chromium-browser`): nessuna modifica necessaria a valle.
+- **Font `fonts-liberation` e `fonts-dejavu-core`**, che non sono un extra: il CSS di quei report
+  chiede `-apple-system/Segoe UI/Roboto/Helvetica/Arial` e nell'immagine non esiste **nessuno** di
+  quei nomi. Senza, il PDF esce con le pagine vuote o coi quadratini — cioe' proprio il sintomo che
+  si voleva risolvere. Misurato: con questi font il report di prova rende **4 pagine e 333
+  operatori di testo**, usando `LiberationSans` (metric-compatible con Arial/Helvetica) e
+  `DejaVuSans`.
+- Le librerie di runtime di Chrome (`libnss3`, `libatk*`, `libgbm1`, `libpango`, `libasound2`, ...),
+  piu' `wget`/`unzip`/`ca-certificates` **reinstallati di proposito**: nell'immagine pubblicata oggi
+  non risultano presenti nonostante compaiano in una `RUN` precedente, quindi non si danno per
+  scontati.
+
+### Changed
+
+- Niente per le pipeline esistenti: il layer e' additivo. L'immagine cresce di **~300 MB**; i job
+  Nomad degli agent hanno `force_pull = true`, quindi la prendono al riavvio. Ma il loro
+  `healthy_deadline` e' **300 s** con `image_pull_timeout` di default: un pull piu' grande su una
+  rete lenta puo' avvicinarsi al limite — da guardare al primo rilascio.
+
+### Note
+
+- `chrome-headless-shell` e **non** il pacchetto `google-chrome-stable`: il repo apt di Google
+  porta solo la stabile corrente, quindi non e' pinnabile e la build non sarebbe riproducibile.
+  Qui la versione sta nell'URL, come per `commandlinetools` e `golangci-lint`.
+- **Build locale eseguita solo in parte, e il tag NON e' stato creato.** Su questa workstation
+  (arm64) l'installazione del binario amd64 e' verificata (`chromium --version` risponde
+  `Google Chrome for Testing 153.0.8010.36`, tutte le librerie risolte), ma il **rendering** non e'
+  provabile: qemu aborta (`/qemu/include/qemu/rcu.h: rcu_read_unlock`). I flag e i font sono stati
+  validati in modo **nativo** su `debian:12` arm64 con lo stesso comando dello script. ⇒ Prima del
+  tag serve una build+stampa su **amd64**: la regola del repo chiede la build locale del canale
+  toccato, e qui il tag e' il deploy — sovrascrive `latest` su GHCR per tutte le pipeline.
+
 ## [1.8.0] - 2026-09-02
 
 ### Added

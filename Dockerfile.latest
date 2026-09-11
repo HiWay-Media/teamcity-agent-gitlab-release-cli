@@ -35,3 +35,36 @@ RUN yes | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools"
 RUN yes | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-35"
 RUN yes | /root/Android/Sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;35.0.0"
 #
+#
+# --- Chrome headless per i report PDF delle pipeline -------------------------
+# Serve a `link-speed-report.py --pdf` e alla daily `daily-live-*.pdf`: senza un browser
+# sull'agent lo script salta il PDF (exit 0, report solo in .md) e per mesi nessuno ha
+# ricevuto il formato piu' leggibile. Verificato l'11/09/2026: nessun agent, ne' l'LXC
+# ospite ne' il container, aveva un browser.
+#
+# ⭐ `chrome-headless-shell` da Chrome for Testing e NON il pacchetto `google-chrome-stable`:
+#    il repo apt di Google porta SOLO la stabile corrente, quindi non e' pinnabile e la build
+#    non sarebbe riproducibile (regola del repo: gli strumenti scaricati si pinnano). Qui la
+#    versione e' nell'URL, come per commandlinetools e golangci-lint.
+# ⚠️ I font NON sono un extra: il CSS dei report chiede -apple-system/Segoe UI/Roboto/
+#    Helvetica/Arial e su questa immagine non esiste nessuno di quei nomi. Senza
+#    `fonts-liberation` (metric-compatible con Arial/Helvetica) il PDF esce con le pagine
+#    vuote o coi quadratini, che e' esattamente il sintomo che si voleva risolvere.
+# ⚠️ `unzip`/`wget` sono reinstallati qui di proposito: nell'immagine pubblicata oggi non
+#    risultano presenti, quindi non si danno per scontati anche se compaiono sopra.
+# ℹ️ L'agent gira come root: headless Chrome in quel caso vuole `--no-sandbox`, e
+#    `link-speed-report.py` lo aggiunge da solo quando euid==0. Niente da fare qui.
+ARG CHROME_VERSION=153.0.8010.36
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      wget unzip ca-certificates \
+      libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 \
+      libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 \
+      libasound2 libatspi2.0-0 libxext6 libx11-6 libxcb1 \
+      fonts-liberation fonts-dejavu-core \
+ && wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-headless-shell-linux64.zip" -O /tmp/chs.zip \
+ && unzip -q /tmp/chs.zip -d /opt \
+ && rm /tmp/chs.zip \
+ && ln -s /opt/chrome-headless-shell-linux64/chrome-headless-shell /usr/bin/chromium \
+ && rm -rf /var/lib/apt/lists/* \
+ && chromium --version
+# --- fine Chrome headless ---------------------------------------------------
